@@ -17,7 +17,7 @@ import sys
 from nuitka.__past__ import unicode
 from nuitka.CCodeCaching import reportCacheStatistics as reportCCodeCacheStatistics
 from nuitka.containers.OrderedDicts import OrderedDict
-from nuitka.Options import (
+from nuitka.options.Options import (
     assumeYesForDownloads,
     getDebugModeIndications,
     getExperimentalIndications,

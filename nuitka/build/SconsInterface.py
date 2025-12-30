@@ -15,8 +15,9 @@ import subprocess
 import sys
 
 from nuitka.__past__ import unicode
+from nuitka.CCodeCaching import reportCacheStatistics as reportCCodeCacheStatistics
 from nuitka.containers.OrderedDicts import OrderedDict
-from nuitka.options.Options import (
+from nuitka.Options import (
     assumeYesForDownloads,
     getDebugModeIndications,
     getExperimentalIndications,
@@ -42,7 +43,6 @@ from nuitka.options.Options import (
     isShowScons,
     isStandaloneMode,
     isUnstripped,
-    isZig,
     shallCompileWithoutBuildDirectory,
     shallCreateAppBundle,
     shallDisableCCacheUsage,
@@ -70,6 +70,7 @@ from nuitka.PythonVersions import (
     python_version,
     python_version_str,
 )
+from nuitka.SourceCodeCaching import reportCacheStatistics
 from nuitka.Tracing import flushStandardOutputs, general, isQuiet, scons_logger
 from nuitka.utils.AppDirs import getCacheDirEnvironmentVariableName
 from nuitka.utils.Download import getDownloadCacheDir, getDownloadCacheName
@@ -83,8 +84,6 @@ from nuitka.utils.FileOperations import (
     deleteFile,
     getDirectoryRealPath,
     getExternalUsePath,
-    getNormalizedPath,
-    getNormalizedPathJoin,
     getWindowsShortPathName,
     hasFilenameExtension,
     listDir,
@@ -94,8 +93,6 @@ from nuitka.utils.FileOperations import (
     withDirectoryChange,
 )
 from nuitka.utils.InstalledPythons import findInstalledPython
-from nuitka.utils.Json import loadJsonFromFilename
-from nuitka.utils.PrivatePipSpace import getZigBinaryPath
 from nuitka.utils.SharedLibraries import detectBinaryMinMacOS
 from nuitka.utils.Utils import (
     getArchitecture,
@@ -118,7 +115,7 @@ def getSconsDataPath():
 def _getSconsInlinePath():
     """Return path to inline copy of scons."""
 
-    return getNormalizedPathJoin(getSconsDataPath(), "inline_copy")
+    return os.path.join(getSconsDataPath(), "inline_copy")
 
 
 def _getSconsBinaryCall():
@@ -128,7 +125,7 @@ def _getSconsBinaryCall():
     or if we are on Windows, there it is mandatory.
     """
 
-    inline_path = getNormalizedPathJoin(_getSconsInlinePath(), "bin", "scons.py")
+    inline_path = os.path.join(_getSconsInlinePath(), "bin", "scons.py")
 
     if os.path.exists(inline_path) and not isExperimental("force-system-scons"):
         return [
@@ -318,7 +315,7 @@ def _createSconsDebugScript(source_dir, scons_command):
     )
 
     putTextFileContents(
-        filename=getNormalizedPathJoin(source_dir, scons_debug_python_name),
+        filename=os.path.join(source_dir, scons_debug_python_name),
         contents="""\
 # -*- coding: utf-8 -*-
 
@@ -353,7 +350,7 @@ cd "${0%/*}"
 """
 
     putTextFileContents(
-        filename=getNormalizedPathJoin(
+        filename=os.path.join(
             source_dir,
             changeFilenameExtension(scons_debug_python_name, script_extension),
         ),
@@ -380,10 +377,6 @@ def _removeUnwantedArtifacts(scons_created_exe):
 
 
 def runScons(scons_options, env_values, scons_filename):
-    # We are handling quite a few error cases, as this contains transfer of
-    # exceptions, workarounds for non-encodable filenames, and other error
-    # handling. pylint: disable=too-many-branches
-
     with _setupSconsEnvironment():
         env_values["_NUITKA_BUILD_DEFINITIONS_CATALOG"] = ",".join(env_values.keys())
 
@@ -438,14 +431,7 @@ def runScons(scons_options, env_values, scons_filename):
             else:
                 # TODO: We might want to make a difference for where reporting makes sense or not.
                 if result == 27:
-                    scons_error_json = getNormalizedPathJoin(
-                        source_dir, "scons-error.json"
-                    )
-                    if os.path.exists(scons_error_json):
-                        error_info = loadJsonFromFilename(scons_error_json)
-
-                        if error_info is not None:
-                            return general.sysexit(**error_info)
+                    scons_logger.sysexit("Fatal error in scons build.")
 
         # TODO: Actually this should only flush one of these, namely the one for
         # current source_dir.
@@ -453,10 +439,8 @@ def runScons(scons_options, env_values, scons_filename):
 
         if "source_dir" in scons_options and result == 0:
             if "result_exe" in scons_options:
-                scons_created_exe = getNormalizedPath(
-                    getSconsReportValue(
-                        source_dir or scons_options["source_dir"], "TARGET"
-                    )
+                scons_created_exe = getSconsReportValue(
+                    source_dir or scons_options["source_dir"], "TARGET"
                 )
 
                 if not os.path.exists(scons_created_exe):
@@ -472,7 +456,10 @@ def runScons(scons_options, env_values, scons_filename):
 
             checkCachingSuccess(source_dir or scons_options["source_dir"])
 
-    return result == 0
+            reportCacheStatistics()
+            reportCCodeCacheStatistics()
+
+        return result == 0
 
 
 def asBoolStr(value):
@@ -514,13 +501,13 @@ def cleanSconsDirectory(source_dir):
         for path, _filename in listDir(source_dir):
             check(path)
 
-        static_dir = getNormalizedPathJoin(source_dir, "static_src")
+        static_dir = os.path.join(source_dir, "static_src")
 
         if os.path.exists(static_dir):
             for path, _filename in listDir(static_dir):
                 check(path)
 
-        plugins_dir = getNormalizedPathJoin(source_dir, "plugins")
+        plugins_dir = os.path.join(source_dir, "plugins")
 
         if os.path.exists(plugins_dir):
             for path, _filename in listDir(plugins_dir):
@@ -567,11 +554,6 @@ def getCommonSconsOptions():
 
     if isMingw64():
         scons_options["mingw_mode"] = asBoolStr(True)
-
-    if isZig():
-        scons_options["zig_exe_path"] = getZigBinaryPath(
-            logger=scons_logger, assume_yes_for_downloads=assumeYesForDownloads()
-        )
 
     if getMsvcVersion():
         scons_options["msvc_version"] = getMsvcVersion()

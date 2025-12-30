@@ -19,6 +19,7 @@ from nuitka.build.SconsUtils import (
     readSconsErrorReport,
     readSconsReport,
 )
+from nuitka.CCodeCaching import getCachedCCode, writeCachedCCode
 from nuitka.code_generation.CodeGeneration import (
     generateHelpersCode,
     generateModuleCode,
@@ -524,6 +525,11 @@ def makeSourceDirectory():
             item=module_name,
         )
 
+        # Try to use cached C code first
+        if getCachedCCode(module=current_module, c_output_filename=c_filename):
+            # Cache hit - C code restored from cache
+            continue
+
         source_code = generateModuleCode(
             module=current_module,
             data_filename=changeFilenameExtension(
@@ -532,6 +538,9 @@ def makeSourceDirectory():
         )
 
         writeSourceCode(filename=c_filename, source_code=source_code)
+
+        # Cache the generated C code
+        writeCachedCCode(module=current_module, c_source_filename=c_filename)
 
     closeProgressBar()
 

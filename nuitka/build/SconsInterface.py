@@ -56,6 +56,7 @@ from nuitka.plugins.Hooks import (
     getExtraLinkLibraries,
     getPreprocessorSymbols,
 )
+from nuitka.CCodeCaching import reportCacheStatistics as reportCCodeCacheStatistics
 from nuitka.SourceCodeCaching import reportCacheStatistics
 from nuitka.PythonFlavors import (
     isAnacondaPython,
@@ -456,6 +457,7 @@ def runScons(scons_options, env_values, scons_filename):
             checkCachingSuccess(source_dir or scons_options["source_dir"])
 
             reportCacheStatistics()
+            reportCCodeCacheStatistics()
 
         return result == 0
 

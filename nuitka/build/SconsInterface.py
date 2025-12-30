@@ -70,7 +70,6 @@ from nuitka.PythonVersions import (
     python_version,
     python_version_str,
 )
-from nuitka.SourceCodeCaching import reportCacheStatistics
 from nuitka.Tracing import flushStandardOutputs, general, isQuiet, scons_logger
 from nuitka.utils.AppDirs import getCacheDirEnvironmentVariableName
 from nuitka.utils.Download import getDownloadCacheDir, getDownloadCacheName
@@ -456,7 +455,6 @@ def runScons(scons_options, env_values, scons_filename):
 
             checkCachingSuccess(source_dir or scons_options["source_dir"])
 
-            reportCacheStatistics()
             reportCCodeCacheStatistics()
 
         return result == 0

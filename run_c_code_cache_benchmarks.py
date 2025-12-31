@@ -10,7 +10,6 @@ import sys
 import time
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).parent
 
 
@@ -52,9 +51,7 @@ def _run_script(script_name, timeout_s=600):
     )
     if result.returncode != 0:
         combined = (result.stdout + "\n" + result.stderr).strip()
-        raise RuntimeError(
-            "Benchmark failed: %s\n%s" % (script_name, combined[-4000:])
-        )
+        raise RuntimeError("Benchmark failed: %s\n%s" % (script_name, combined[-4000:]))
     return result.stdout + "\n" + result.stderr
 
 
@@ -63,6 +60,14 @@ def _parse_c_code_cache(output):
     warm_match = re.search(r"Warm cache:\s+([0-9.]+)s", output)
     if not cold_match or not warm_match:
         raise ValueError("Failed to parse benchmark_c_code_cache output.")
+    return float(cold_match.group(1)), float(warm_match.group(1))
+
+
+def _parse_codegen_only(output):
+    cold_match = re.search(r"Cold codegen:\s+([0-9.]+)s", output)
+    warm_match = re.search(r"Warm codegen:\s+([0-9.]+)s", output)
+    if not cold_match or not warm_match:
+        raise ValueError("Failed to parse benchmark_codegen_only output.")
     return float(cold_match.group(1)), float(warm_match.group(1))
 
 
@@ -139,6 +144,19 @@ def _report_medians_c_code_cache(parsed_runs):
     print("  Saved: %.2fs (%.1f%% faster)" % (saved, percent))
 
 
+def _report_medians_codegen_only(parsed_runs):
+    cold_times = [item[0] for item in parsed_runs]
+    warm_times = [item[1] for item in parsed_runs]
+    cold_med = _median(cold_times)
+    warm_med = _median(warm_times)
+    saved = cold_med - warm_med
+    percent = (saved / cold_med * 100.0) if cold_med else 0.0
+    print("\nbenchmark_codegen_only.py (median of %d runs)" % len(parsed_runs))
+    print("  Cold:  %.3fs" % cold_med)
+    print("  Warm:  %.3fs" % warm_med)
+    print("  Saved: %.3fs (%.1f%% faster)" % (saved, percent))
+
+
 def _report_medians_multifile(parsed_runs):
     module_counts = sorted(parsed_runs[0].keys())
     print("\nbenchmark_multifile_real.py (median of %d runs)" % len(parsed_runs))
@@ -166,14 +184,24 @@ def _report_medians_real_performance(parsed_runs):
         saved = cold_med - warm_med
         percent = (saved / cold_med * 100.0) if cold_med else 0.0
         print("  %s:" % label)
-        print("    Cold %.2fs -> Warm %.2fs (%.1f%% faster)" % (cold_med, warm_med, percent))
+        print(
+            "    Cold %.2fs -> Warm %.2fs (%.1f%% faster)"
+            % (cold_med, warm_med, percent)
+        )
 
 
 def main():
     runs = 3
     print("Running each benchmark %d times with cache clears." % runs)
 
-    parsed_c_code = _run_benchmark("benchmark_c_code_cache.py", _parse_c_code_cache, runs)
+    parsed_codegen = _run_benchmark(
+        "benchmark_codegen_only.py", _parse_codegen_only, runs
+    )
+    _report_medians_codegen_only(parsed_codegen)
+
+    parsed_c_code = _run_benchmark(
+        "benchmark_c_code_cache.py", _parse_c_code_cache, runs
+    )
     _report_medians_c_code_cache(parsed_c_code)
 
     parsed_multifile = _run_benchmark(

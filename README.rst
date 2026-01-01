@@ -1843,16 +1843,6 @@ performance from Nuitka. It's a work in progress and is updated as we
 go. The current focus for performance measurements is Python 2.7, but
 3.x is going to follow later.
 
-C code cache benchmarks
-=======================
-
-To reproduce C code cache measurements, run::
-
-   python run_c_code_cache_benchmarks.py
-
-This runs the cache benchmarks three times, clears caches between runs,
-and reports medians.
-
 pystone results
 ===============
 

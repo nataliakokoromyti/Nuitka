@@ -7,14 +7,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
 
 
 def _run_compile(source_path, output_dir, cache_dir):
     env = os.environ.copy()
-    env["NUITKA_CACHE_DIR_C_CODE_CACHE"] = str(cache_dir)
+    env["NUITKA_CACHE_DIR_C_CODE_CACHE"] = cache_dir
 
-    if output_dir.exists():
+    if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
 
     result = subprocess.run(
@@ -24,7 +23,7 @@ def _run_compile(source_path, output_dir, cache_dir):
             "nuitka",
             "--nofollow-imports",
             "--output-dir=%s" % output_dir,
-            str(source_path),
+            source_path,
         ],
         capture_output=True,
         text=True,
@@ -42,13 +41,14 @@ def _run_compile(source_path, output_dir, cache_dir):
 
 
 def main():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir = Path(temp_dir)
-        source_path = temp_dir / "cache_test.py"
-        output_dir = temp_dir / "out"
-        cache_dir = temp_dir / "cache"
+    temp_dir = tempfile.mkdtemp()
+    try:
+        source_path = os.path.join(temp_dir, "cache_test.py")
+        output_dir = os.path.join(temp_dir, "out")
+        cache_dir = os.path.join(temp_dir, "cache")
 
-        source_path.write_text("print('ok')\n", encoding="utf-8")
+        with open(source_path, "w") as f:
+            f.write("print('ok')\n")
 
         hits, misses = _run_compile(source_path, output_dir, cache_dir)
         if hits != 0 or misses == 0:
@@ -63,6 +63,8 @@ def main():
                 "Expected warm compile to be hits only, got hits=%d misses=%d"
                 % (hits, misses)
             )
+    finally:
+        shutil.rmtree(temp_dir)
 
     print("OK: C code cache hit/miss behavior verified.")
     return 0

@@ -580,6 +580,11 @@ def getCommonSconsOptions():
     if isMingw64():
         scons_options["mingw_mode"] = asBoolStr(True)
 
+    if isZig():
+        scons_options["zig_exe_path"] = getZigBinaryPath(
+            logger=scons_logger, assume_yes_for_downloads=assumeYesForDownloads()
+        )
+
     if getMsvcVersion():
         scons_options["msvc_version"] = getMsvcVersion()
 
@@ -642,11 +647,6 @@ def getCommonSconsOptions():
 
     if getFcfProtectionMode() != "auto":
         scons_options["cf_protection"] = getFcfProtectionMode()
-
-    if isZig():
-        scons_options["zig_exe_path"] = getZigBinaryPath(
-            logger=scons_logger, assume_yes_for_downloads=assumeYesForDownloads()
-        )
 
     env_values = OrderedDict()
 

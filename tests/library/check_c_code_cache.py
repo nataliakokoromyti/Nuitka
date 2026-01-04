@@ -8,7 +8,6 @@ import subprocess
 import sys
 import tempfile
 
-
 try:
     unicode  # pylint: disable=used-before-assignment
 except NameError:

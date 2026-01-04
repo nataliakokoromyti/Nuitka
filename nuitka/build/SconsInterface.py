@@ -82,6 +82,7 @@ from nuitka.utils.FileOperations import (
     changeFilenameExtension,
     deleteFile,
     getDirectoryRealPath,
+    getNormalizedPathJoin,
     getExternalUsePath,
     getWindowsShortPathName,
     hasFilenameExtension,
@@ -92,6 +93,7 @@ from nuitka.utils.FileOperations import (
     withDirectoryChange,
 )
 from nuitka.utils.InstalledPythons import findInstalledPython
+from nuitka.utils.Json import loadJsonFromFilename
 from nuitka.utils.SharedLibraries import detectBinaryMinMacOS
 from nuitka.utils.Utils import (
     getArchitecture,
@@ -430,6 +432,15 @@ def runScons(scons_options, env_values, scons_filename):
             else:
                 # TODO: We might want to make a difference for where reporting makes sense or not.
                 if result == 27:
+                    scons_error_json = getNormalizedPathJoin(
+                        source_dir, "scons-error.json"
+                    )
+                    if os.path.exists(scons_error_json):
+                        error_info = loadJsonFromFilename(scons_error_json)
+
+                        if error_info is not None:
+                            return general.sysexit(**error_info)
+
                     scons_logger.sysexit("Fatal error in scons build.")
 
         # TODO: Actually this should only flush one of these, namely the one for

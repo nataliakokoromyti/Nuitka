@@ -18,6 +18,7 @@ import os
 import shutil
 
 from nuitka.PythonVersions import python_version
+from nuitka.plugins.Hooks import getPluginsCacheContributionValues
 from nuitka.Tracing import general
 from nuitka.utils.AppDirs import getCacheDir
 from nuitka.utils.Hashing import Hash
@@ -64,7 +65,11 @@ def _makeSourceHash(module):
     hash_value.updateFromValues(python_version)
 
     # Hash module full name (to avoid collisions)
-    hash_value.updateFromValues(module.getFullName().asString())
+    full_name = module.getFullName()
+    hash_value.updateFromValues(full_name.asString())
+
+    # Plugins may influence generated C code for this module.
+    hash_value.updateFromValues(*getPluginsCacheContributionValues(full_name))
 
     return hash_value.asHexDigest()
 

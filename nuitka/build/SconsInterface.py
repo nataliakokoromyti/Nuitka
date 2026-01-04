@@ -384,6 +384,7 @@ def runScons(scons_options, env_values, scons_filename):
     # We are handling quite a few error cases, as this contains transfer of
     # exceptions, workarounds for non-encodable filenames, and other error
     # handling. pylint: disable=too-many-branches
+
     with _setupSconsEnvironment():
         env_values["_NUITKA_BUILD_DEFINITIONS_CATALOG"] = ",".join(env_values.keys())
 

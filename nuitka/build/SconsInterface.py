@@ -83,6 +83,7 @@ from nuitka.utils.FileOperations import (
     changeFilenameExtension,
     deleteFile,
     getDirectoryRealPath,
+    getNormalizedPath,
     getNormalizedPathJoin,
     getExternalUsePath,
     getWindowsShortPathName,
@@ -451,8 +452,10 @@ def runScons(scons_options, env_values, scons_filename):
 
         if "source_dir" in scons_options and result == 0:
             if "result_exe" in scons_options:
-                scons_created_exe = getSconsReportValue(
-                    source_dir or scons_options["source_dir"], "TARGET"
+                scons_created_exe = getNormalizedPath(
+                    getSconsReportValue(
+                        source_dir or scons_options["source_dir"], "TARGET"
+                    )
                 )
 
                 if not os.path.exists(scons_created_exe):

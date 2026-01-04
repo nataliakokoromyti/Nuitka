@@ -9,6 +9,18 @@ import sys
 import tempfile
 
 
+try:
+    unicode  # pylint: disable=used-before-assignment
+except NameError:
+    unicode = str
+
+
+def _toText(value):
+    if isinstance(value, bytes):
+        return value.decode("utf-8", "replace")
+    return value
+
+
 def _run_compile(source_path, output_dir, cache_dir):
     env = os.environ.copy()
     env["NUITKA_CACHE_DIR_C_CODE_CACHE"] = cache_dir
@@ -16,7 +28,7 @@ def _run_compile(source_path, output_dir, cache_dir):
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
 
-    result = subprocess.run(
+    process = subprocess.Popen(
         [
             sys.executable,
             "-m",
@@ -25,15 +37,18 @@ def _run_compile(source_path, output_dir, cache_dir):
             "--output-dir=%s" % output_dir,
             source_path,
         ],
-        capture_output=True,
-        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         env=env,
     )
+    stdout, stderr = process.communicate()
+    stdout = _toText(stdout)
+    stderr = _toText(stderr)
 
-    if result.returncode != 0:
-        raise RuntimeError(result.stderr[-2000:])
+    if process.returncode != 0:
+        raise RuntimeError(stderr[-2000:])
 
-    match = re.search(r"C code cache:\s+(\d+)\s+hits,\s+(\d+)\s+misses", result.stderr)
+    match = re.search(r"C code cache:\s+(\d+)\s+hits,\s+(\d+)\s+misses", stderr)
     if not match:
         raise RuntimeError("Cache stats not found in output.")
 

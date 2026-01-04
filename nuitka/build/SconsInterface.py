@@ -72,7 +72,10 @@ from nuitka.PythonVersions import (
     python_version_str,
 )
 from nuitka.Tracing import flushStandardOutputs, general, isQuiet, scons_logger
-from nuitka.utils.AppDirs import getCacheDirEnvironmentVariableName
+from nuitka.utils.AppDirs import (
+    getCacheDir,
+    getCacheDirEnvironmentVariableName,
+)
 from nuitka.utils.Download import getDownloadCacheDir, getDownloadCacheName
 from nuitka.utils.Execution import (
     getExecutablePath,
@@ -83,9 +86,9 @@ from nuitka.utils.FileOperations import (
     changeFilenameExtension,
     deleteFile,
     getDirectoryRealPath,
+    getExternalUsePath,
     getNormalizedPath,
     getNormalizedPathJoin,
-    getExternalUsePath,
     getWindowsShortPathName,
     hasFilenameExtension,
     listDir,
@@ -119,7 +122,7 @@ def getSconsDataPath():
 def _getSconsInlinePath():
     """Return path to inline copy of scons."""
 
-    return os.path.join(getSconsDataPath(), "inline_copy")
+    return getNormalizedPathJoin(getSconsDataPath(), "inline_copy")
 
 
 def _getSconsBinaryCall():
@@ -129,7 +132,7 @@ def _getSconsBinaryCall():
     or if we are on Windows, there it is mandatory.
     """
 
-    inline_path = os.path.join(_getSconsInlinePath(), "bin", "scons.py")
+    inline_path = getNormalizedPathJoin(_getSconsInlinePath(), "bin", "scons.py")
 
     if os.path.exists(inline_path) and not isExperimental("force-system-scons"):
         return [
@@ -217,6 +220,10 @@ def _setupSconsEnvironment2():
         os.environ[getCacheDirEnvironmentVariableName(getDownloadCacheName())] = (
             getExternalUsePath(download_cache_dir)
         )
+
+        msvc_config_cache_dir = getCacheDir("scons-msvc-config")
+        makePath(msvc_config_cache_dir)
+        os.environ["SCONS_CACHE_MSVC_CONFIG"] = getNormalizedPath(msvc_config_cache_dir)
 
     yield
 
@@ -319,7 +326,7 @@ def _createSconsDebugScript(source_dir, scons_command):
     )
 
     putTextFileContents(
-        filename=os.path.join(source_dir, scons_debug_python_name),
+        filename=getNormalizedPathJoin(source_dir, scons_debug_python_name),
         contents="""\
 # -*- coding: utf-8 -*-
 
@@ -354,7 +361,7 @@ cd "${0%/*}"
 """
 
     putTextFileContents(
-        filename=os.path.join(
+        filename=getNormalizedPathJoin(
             source_dir,
             changeFilenameExtension(scons_debug_python_name, script_extension),
         ),
@@ -381,6 +388,9 @@ def _removeUnwantedArtifacts(scons_created_exe):
 
 
 def runScons(scons_options, env_values, scons_filename):
+    # We are handling quite a few error cases, as this contains transfer of
+    # exceptions, workarounds for non-encodable filenames, and other error
+    # handling. pylint: disable=too-many-branches
     with _setupSconsEnvironment():
         env_values["_NUITKA_BUILD_DEFINITIONS_CATALOG"] = ",".join(env_values.keys())
 
@@ -410,6 +420,9 @@ def runScons(scons_options, env_values, scons_filename):
 
         # Pass quiet setting to scons via environment variable.
         env_values["NUITKA_QUIET"] = "1" if isQuiet() else "0"
+
+        if isShowScons():
+            env_values["NUITKA_SCONS_CHECK_MSVC_CACHE"] = "1"
 
         scons_command = _buildSconsCommand(
             options=scons_options, scons_filename=scons_filename
@@ -444,8 +457,6 @@ def runScons(scons_options, env_values, scons_filename):
                         if error_info is not None:
                             return general.sysexit(**error_info)
 
-                    scons_logger.sysexit("Fatal error in scons build.")
-
         # TODO: Actually this should only flush one of these, namely the one for
         # current source_dir.
         flushSconsReports()
@@ -473,7 +484,7 @@ def runScons(scons_options, env_values, scons_filename):
 
             reportCCodeCacheStatistics()
 
-        return result == 0
+    return result == 0
 
 
 def asBoolStr(value):
@@ -515,13 +526,13 @@ def cleanSconsDirectory(source_dir):
         for path, _filename in listDir(source_dir):
             check(path)
 
-        static_dir = os.path.join(source_dir, "static_src")
+        static_dir = getNormalizedPathJoin(source_dir, "static_src")
 
         if os.path.exists(static_dir):
             for path, _filename in listDir(static_dir):
                 check(path)
 
-        plugins_dir = os.path.join(source_dir, "plugins")
+        plugins_dir = getNormalizedPathJoin(source_dir, "plugins")
 
         if os.path.exists(plugins_dir):
             for path, _filename in listDir(plugins_dir):

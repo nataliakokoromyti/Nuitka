@@ -54,7 +54,7 @@ def _makeSourceHash(module):
     source_filename = module.getCompileTimeFilename()
     try:
         hash_value.updateFromFile(source_filename)
-    except Exception:
+    except OSError:
         # If we can't read source, can't cache
         return None
 
@@ -144,10 +144,9 @@ def writeCachedCCode(module, c_source_filename):
             cached_const_file = _getCacheFilename(cache_hash, "const")
             shutil.copy2(const_source_filename, cached_const_file)
 
-    except (OSError, IOError):
-        # Silently ignore cache write errors
-        # Don't let caching failures break compilation
-        pass
+    except OSError as e:
+        # Don't let caching failures break compilation, but report them.
+        general.warning("Failed to write C code cache entry: %s" % e)
 
 
 def getCacheStatistics():

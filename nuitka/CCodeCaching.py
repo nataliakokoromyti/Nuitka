@@ -7,7 +7,7 @@ This module implements caching of Nuitka's generated C source files to avoid
 regenerating C code for unchanged modules during incremental builds.
 
 Pipeline:
-    Python source -> AST -> Nuitka Tree -> [C Generation] -> .c files -> C compilation
+    Python source ƒ+' AST ƒ+' Nuitka Tree ƒ+' [C Generation] ƒ+' .c files ƒ+' C compilation
 
 When recompiling after source changes, Nuitka regenerates C code for all modules.
 This cache stores generated .c files keyed by source hash, allowing reuse when

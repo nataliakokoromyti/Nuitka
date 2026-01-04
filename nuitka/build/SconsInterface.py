@@ -43,6 +43,7 @@ from nuitka.options.Options import (
     isShowScons,
     isStandaloneMode,
     isUnstripped,
+    isZig,
     shallCompileWithoutBuildDirectory,
     shallCreateAppBundle,
     shallDisableCCacheUsage,
@@ -94,6 +95,7 @@ from nuitka.utils.FileOperations import (
 )
 from nuitka.utils.InstalledPythons import findInstalledPython
 from nuitka.utils.Json import loadJsonFromFilename
+from nuitka.utils.PrivatePipSpace import getZigBinaryPath
 from nuitka.utils.SharedLibraries import detectBinaryMinMacOS
 from nuitka.utils.Utils import (
     getArchitecture,
@@ -626,6 +628,11 @@ def getCommonSconsOptions():
 
     if getFcfProtectionMode() != "auto":
         scons_options["cf_protection"] = getFcfProtectionMode()
+
+    if isZig():
+        scons_options["zig_exe_path"] = getZigBinaryPath(
+            logger=scons_logger, assume_yes_for_downloads=assumeYesForDownloads()
+        )
 
     env_values = OrderedDict()
 

@@ -1,7 +1,7 @@
 #     Copyright 2025, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file
 
 
-""" Caching of generated C code.
+"""Caching of generated C code.
 
 This module implements caching of Nuitka's generated C source files to avoid
 regenerating C code for unchanged modules during incremental builds.
@@ -17,8 +17,8 @@ source is unchanged.
 import os
 import shutil
 
-from nuitka.PythonVersions import python_version
 from nuitka.plugins.Hooks import getPluginsCacheContributionValues
+from nuitka.PythonVersions import python_version
 from nuitka.Tracing import general
 from nuitka.utils.AppDirs import getCacheDir
 from nuitka.utils.Hashing import Hash
@@ -28,8 +28,7 @@ from nuitka.Version import version_string
 _cache_format_version = 1
 
 # Cache statistics
-_cache_hits = 0
-_cache_misses = 0
+_cache_stats = {"hits": 0, "misses": 0}
 
 
 def _getCacheDir():
@@ -93,18 +92,16 @@ def getCachedCCode(module, c_output_filename):
     Returns:
         True if cache hit and files restored, False otherwise
     """
-    global _cache_hits, _cache_misses
-
     cache_hash = _makeSourceHash(module)
     if cache_hash is None:
-        _cache_misses += 1
+        _cache_stats["misses"] += 1
         return False
 
     try:
         cached_c_file = _getCacheFilename(cache_hash, "c")
 
         if not os.path.isfile(cached_c_file):
-            _cache_misses += 1
+            _cache_stats["misses"] += 1
             return False
 
         # Copy cached .c file
@@ -116,12 +113,12 @@ def getCachedCCode(module, c_output_filename):
         if os.path.isfile(cached_const_file):
             shutil.copy2(cached_const_file, const_output_filename)
 
-        _cache_hits += 1
+        _cache_stats["hits"] += 1
         return True
 
     except (OSError, IOError):
         # On any error, treat as cache miss
-        _cache_misses += 1
+        _cache_stats["misses"] += 1
         return False
 
 
@@ -155,12 +152,12 @@ def writeCachedCCode(module, c_source_filename):
 def getCacheStatistics():
     """Get cache hit/miss statistics."""
     return {
-        "hits": _cache_hits,
-        "misses": _cache_misses,
-        "total": _cache_hits + _cache_misses,
+        "hits": _cache_stats["hits"],
+        "misses": _cache_stats["misses"],
+        "total": _cache_stats["hits"] + _cache_stats["misses"],
         "hit_rate": (
-            _cache_hits / (_cache_hits + _cache_misses)
-            if (_cache_hits + _cache_misses) > 0
+            _cache_stats["hits"] / (_cache_stats["hits"] + _cache_stats["misses"])
+            if (_cache_stats["hits"] + _cache_stats["misses"]) > 0
             else 0.0
         ),
     }

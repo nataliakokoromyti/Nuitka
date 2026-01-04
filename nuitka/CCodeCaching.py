@@ -24,6 +24,9 @@ from nuitka.utils.AppDirs import getCacheDir
 from nuitka.utils.Hashing import Hash
 from nuitka.Version import version_string
 
+# Bump this when the cache format or key inputs change.
+_cache_format_version = 1
+
 # Cache statistics
 _cache_hits = 0
 _cache_misses = 0
@@ -58,8 +61,8 @@ def _makeSourceHash(module):
         # If we can't read source, can't cache
         return None
 
-    # Hash Nuitka version (invalidate on upgrade)
-    hash_value.updateFromValues(version_string)
+    # Hash cache format + Nuitka version (invalidate on upgrade or format change)
+    hash_value.updateFromValues(_cache_format_version, version_string)
 
     # Hash Python version (invalidate on Python upgrade)
     hash_value.updateFromValues(python_version)
